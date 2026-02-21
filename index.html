@@ -213,6 +213,22 @@
           <button onclick="triggerImport()">Importer des données (JSON)</button>
           <button onclick="resetLoop()">Réinitialiser boucle</button>
           <button onclick="resetToday()" class="btnDanger">🗑 Effacer les sessions du jour</button>
+          <button onclick="purgeOrphans()">🧹 Purger sessions orphelines</button>
+          <button onclick="debugState()">🔍 Debug état interne</button>
+          <button onclick="copyLogs()">📋 Copier logs</button>
+          <button onclick="resetAll()" class="btnDanger">💣 Reset complet</button>
+
+          <!-- Modale debug -->
+          <div id="debugModal" class="debugModal hidden">
+            <div class="debugModalInner">
+              <div class="debugModalHeader">
+                <span>État interne</span>
+                <button onclick="closeDebugModal()">✕</button>
+              </div>
+              <pre id="debugOutput" class="debugOutput"></pre>
+              <button onclick="closeDebugModal()" class="debugModalClose">Fermer</button>
+            </div>
+          </div>
         </div>
       </details>
     </section>

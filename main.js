@@ -219,6 +219,144 @@ window.logOutcome = logOutcome;
 window.exportData = exportData;
 window.resetLoop = resetLoop;
 window.resetToday = resetToday;
+
+/* ---------------------------------------------------------
+   OUTILS DEV
+   --------------------------------------------------------- */
+
+function purgeOrphans() {
+  const activeId = window.Sessions.getActiveSessionId();
+  const events = window.EventsStore.getEvents();
+  const before = events.length;
+
+  const kept = events.filter(e => {
+    if (e.mode !== "allow") return true;
+    if (e.finalized || e.cancelled) return true;
+    if (e.minutesActual != null) return true;
+    // Garde la session active
+    if (e.sessionId && e.sessionId === activeId) return true;
+    // Supprime les orphelines
+    return false;
+  });
+
+  const removed = before - kept.length;
+  window.EventsStore.setEvents(kept);
+  window.UI.renderAll();
+  alert(`${removed} session(s) orpheline(s) supprimée(s).`);
+}
+
+function debugState() {
+  const events = window.EventsStore.getEvents();
+  const today = new Date().toDateString();
+  const todayEvents = events.filter(e => e.date === today);
+  const activeId = window.Sessions.getActiveSessionId();
+  const activeSession = window.Sessions.getActiveSession(events);
+  const meta = Storage.get("_meta", {});
+  const kb = Storage.sizeKB();
+
+  const orphans = events.filter(e =>
+    e.mode === "allow" && !e.finalized && !e.cancelled &&
+    e.minutesActual == null && e.sessionId !== activeId
+  ).length;
+
+  const info = {
+    "📅 Date": today,
+    "📦 localStorage": kb + " KB",
+    "🗂 Schema version": meta.schemaVersion ?? "?",
+    "📊 Total events": events.length,
+    "📅 Events aujourd'hui": todayEvents.length,
+    "🔑 Active session ID": activeId ?? "aucune",
+    "⚡ Session active": activeSession
+      ? `${activeSession.app} · ${activeSession.intent} · démarrée ${new Date(activeSession.startedAt).toLocaleTimeString("fr-FR")}`
+      : "aucune",
+    "👻 Orphelines": orphans,
+    "🕐 Dernière session": (() => {
+      const last = [...events]
+        .filter(e => e.mode === "allow" && e.finalized)
+        .sort((a, b) => b.startedAt - a.startedAt)[0];
+      return last
+        ? `${last.app} · ${last.minutes}min · ${new Date(last.startedAt).toLocaleTimeString("fr-FR")} · sid: ${last.sessionId?.slice(0,12)}…`
+        : "aucune";
+    })()
+  };
+
+  const output = Object.entries(info)
+    .map(([k, v]) => `${k}
+  ${v}`)
+    .join("
+
+");
+
+  const el = document.getElementById("debugOutput");
+  const modal = document.getElementById("debugModal");
+  if (el) el.textContent = output;
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeDebugModal() {
+  const modal = document.getElementById("debugModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function copyLogs() {
+  const events = window.EventsStore.getEvents();
+  const today = new Date().toDateString();
+  const activeId = window.Sessions.getActiveSessionId();
+  const meta = Storage.get("_meta", {});
+
+  const lines = [
+    `=== Intent Debug Log — ${new Date().toLocaleString("fr-FR")} ===`,
+    `Schema: v${meta.schemaVersion ?? "?"} | Storage: ${Storage.sizeKB()}KB | Events: ${events.length}`,
+    `Active session ID: ${activeId ?? "aucune"}`,
+    ``,
+    `=== Sessions du jour (${today}) ===`,
+    ...events
+      .filter(e => e.date === today && e.mode === "allow")
+      .sort((a, b) => b.startedAt - a.startedAt)
+      .map(e =>
+        `[${e.finalized ? "✓" : e.cancelled ? "✗" : "⏳"}] ${e.app} | ${e.intent ?? "?"} | ${e.minutes ?? 0}min | ${e.startedAt ? new Date(e.startedAt).toLocaleTimeString("fr-FR") : "?"} | sid: ${e.sessionId?.slice(0,12)}…`
+      ),
+    ``,
+    `=== 10 derniers events ===`,
+    ...events.slice(-10).reverse().map(e =>
+      `${e.mode} | ${e.app ?? "?"} | ${e.date} | finalized:${e.finalized} | cancelled:${e.cancelled}`
+    )
+  ].join("
+");
+
+  navigator.clipboard.writeText(lines)
+    .then(() => alert("Logs copiés dans le presse-papier ✓"))
+    .catch(() => {
+      // Fallback si clipboard API indisponible
+      const ta = document.createElement("textarea");
+      ta.value = lines;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      alert("Logs copiés ✓");
+    });
+}
+
+function resetAll() {
+  const ok = confirm(
+    "⚠️ RESET COMPLET\n\n" +
+    "Toutes les données seront effacées :\n" +
+    "• Sessions et historique\n" +
+    "• Paramètres et schéma\n\n" +
+    "Cette action est irréversible.\nContinuer ?"
+  );
+  if (!ok) return;
+
+  Storage.clearAll();
+  location.reload();
+}
+
+window.purgeOrphans = purgeOrphans;
+window.debugState = debugState;
+window.closeDebugModal = closeDebugModal;
+window.copyLogs = copyLogs;
+window.resetAll = resetAll;
 window.triggerImport = window.triggerImport;
 
 /* ---------------------------------------------------------
