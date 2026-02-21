@@ -388,11 +388,11 @@ function renderDayPicker() {
     days.push(d.toDateString());
   }
 
-  const dayLabels = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const dayLabels = ["Di","Lu","Ma","Me","Je","Ve","Sa"];
 
   el.innerHTML = days.map(dateStr => {
     const d = new Date(dateStr);
-    const label = dateStr === today.toDateString() ? "Auj" : dayLabels[d.getDay()];
+    const label = dayLabels[d.getDay()];
     const hasData = events.some(e => e.date === dateStr && e.mode === "allow" && e.finalized);
     const isActive = _chartDay === dateStr;
     return `<button
@@ -523,9 +523,10 @@ function drawChart(appId = null) {
     }
 
     // Label jour ou heure selon le mode
+    const shortLabels = ["Di","Lu","Ma","Me","Je","Ve","Sa"];
     const labelText = stack.label
       ? stack.label
-      : (isToday ? "Auj" : dayLabels[new Date(dateStr).getDay()]);
+      : shortLabels[new Date(dateStr).getDay()];
     ctx.fillStyle = isToday && !stack.label ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)";
     ctx.font = (isToday && !stack.label ? "bold " : "") + "10px -apple-system, sans-serif";
     ctx.textAlign = "center";
