@@ -497,6 +497,13 @@ function renderTodaySessions() {
   const events = getEventsSafe();
   const today = new Date().toDateString();
 
+  // DEBUG — affiche ce qu'on a
+  console.log("TODAY:", today);
+  console.log("EVENTS:", events.length);
+  events.slice(-3).forEach(e => {
+    console.log(" →", e.mode, e.date, e.app, e.minutes, "sid:", e.sessionId?.slice(0,8));
+  });
+
   const sessions = events.filter(e =>
     e.mode === "allow" &&
     e.date === today &&
