@@ -711,7 +711,8 @@ button:active { transform: scale(0.975); }
 }
 
 .autoCoachBanner {
-  margin-top: 12px;
+  margin-top: 16px;
+  margin-bottom: 8px;
   padding: 12px 16px;
   border-radius: var(--radius-md);
   background: rgba(255, 59, 48, 0.1);

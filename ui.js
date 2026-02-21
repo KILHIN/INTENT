@@ -183,15 +183,17 @@ function computeStreak(events) {
   let streak = 0;
   const now = new Date();
 
-  for (let i = 0; i <= 365; i++) {
+  for (let i = 1; i <= 365; i++) {
     const d = new Date();
     d.setDate(now.getDate() - i);
-    if (i === 0) continue; // on ne compte pas aujourd'hui (journée en cours)
-
     const dateStr = d.toDateString();
-    const dayEvents = events.filter(e => e.date === dateStr && e.mode === "allow");
 
-    // Calcule le total par app ce jour-là
+    const dayEvents = events.filter(e => e.date === dateStr && e.mode === "allow" && e.finalized);
+
+    // Pas de session ce jour-là = on arrête (streak basé sur jours actifs uniquement)
+    if (dayEvents.length === 0) break;
+
+    // Vérifie si un seuil rouge a été dépassé
     let exceeded = false;
     for (const appId of APP_IDS) {
       const cfg = APP_CONFIG[appId];
