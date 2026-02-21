@@ -224,6 +224,31 @@ window.resetToday = resetToday;
    OUTILS DEV
    --------------------------------------------------------- */
 
+function stopSessionById(sid) {
+  if (!sid) return;
+  const ok = confirm("Stopper cette session ? Elle sera marquée annulée.");
+  if (!ok) return;
+
+  const events = window.EventsStore.getEvents();
+  const idx = events.findIndex(e => e.sessionId === sid);
+  if (idx === -1) { alert("Session introuvable."); return; }
+
+  events[idx] = {
+    ...events[idx],
+    cancelled: true,
+    endedAt: Date.now(),
+    minutesActual: 0,
+    minutes: 0,
+    finalized: true
+  };
+
+  window.EventsStore.setEvents(events);
+  if (window.Sessions.getActiveSessionId() === sid) {
+    window.Sessions.clearActiveSessionId();
+  }
+  window.UI.renderAll();
+}
+
 function purgeOrphans() {
   const activeId = window.Sessions.getActiveSessionId();
   const events = window.EventsStore.getEvents();
@@ -377,6 +402,7 @@ function bindToolButtons() {
   }
 }
 
+window.stopSessionById = stopSessionById;
 window.purgeOrphans    = purgeOrphans;
 window.debugState      = debugState;
 window.closeDebugModal = closeDebugModal;

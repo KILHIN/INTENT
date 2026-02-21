@@ -97,11 +97,61 @@ function renderSessionBanner() {
     ? window.Sessions.formatHHMM(active.startedAt)
     : "—";
 
+  // Temps écoulé en direct
+  const elapsed = active.startedAt
+    ? Math.round((Date.now() - active.startedAt) / 60000)
+    : 0;
+
   if (has("sessionBannerText")) {
     $("sessionBannerText").textContent =
-      `${appCfg.icon} ${appCfg.label} · Début : ${start} · Plan : ${planned} min`;
+      `${appCfg.icon} ${appCfg.label} · Début : ${start} · ${elapsed} min écoulées`;
   }
   banner.classList.remove("hidden");
+}
+
+/* ---------------------------------------------------------
+   SESSION MANAGER — liste toutes les sessions ouvertes
+   --------------------------------------------------------- */
+
+function renderSessionManager() {
+  let el = document.getElementById("sessionManager");
+  if (!el) return;
+
+  const events = getEventsSafe();
+  const now = Date.now();
+  const activeId = window.Sessions?.getActiveSessionId?.() ?? null;
+
+  // Toutes les sessions non finalisées
+  const openSessions = events.filter(e =>
+    e.mode === "allow" &&
+    !e.finalized &&
+    !e.cancelled &&
+    e.minutesActual == null &&
+    e.startedAt
+  ).sort((a, b) => b.startedAt - a.startedAt);
+
+  if (openSessions.length === 0) {
+    el.innerHTML = `<p class="smEmpty">Aucune session ouverte.</p>`;
+    return;
+  }
+
+  el.innerHTML = openSessions.map(e => {
+    const cfg = APP_CONFIG[e.app] || { icon: "📱", label: e.app };
+    const start = window.Sessions?.formatHHMM?.(e.startedAt) ?? "—";
+    const elapsed = Math.round((now - e.startedAt) / 60000);
+    const isActive = e.sessionId === activeId;
+    const sid = e.sessionId || "";
+    return `
+      <div class="smRow ${isActive ? "smRow--active" : ""}">
+        <div class="smLeft">
+          <span class="smApp">${cfg.icon} ${cfg.label}</span>
+          <span class="smMeta">${start} · ${elapsed} min · ${isActive ? "🟢 Active" : "⚠️ Orpheline"}</span>
+          <span class="smSid">${sid.slice(0, 16)}…</span>
+        </div>
+        <button class="smStop btnDanger" onclick="stopSessionById('${sid}')">Stop</button>
+      </div>
+    `;
+  }).join("");
 }
 
 /* ---------------------------------------------------------
@@ -749,6 +799,7 @@ function launchCoach(appId = null) {
 function renderAll() {
   renderHero();
   renderSessionBanner();
+  renderSessionManager();
   renderAppSelector();
   renderStatsTabBar();
   renderDayPicker();
@@ -767,7 +818,8 @@ function renderAll() {
 window.UI = {
   showMenu, showIntent, showTimer, showCoach,
   renderAll, launchCoach, selectApp, setStatsApp,
-  renderTodaySessions, toggleChartMode, selectChartDay
+  renderTodaySessions, toggleChartMode, selectChartDay,
+  renderSessionManager
 };
 window.selectApp = selectApp;
 window.setStatsApp = setStatsApp;

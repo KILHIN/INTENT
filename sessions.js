@@ -1,5 +1,5 @@
 // sessions.js
-const SESSION_MAX_AGE_MS = 5 * 60 * 1000; // 5 min auto-finalize
+const SESSION_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h auto-finalize (iOS peut prendre du temps)
 
 function newSessionId() {
   return window.generateSessionId ? generateSessionId() :
@@ -31,6 +31,7 @@ function setActiveSessionId(sid) {
         endedAt: Date.now(),
         minutesActual: 0,
         minutes: 0,
+        finalized: true,
         staleFinalized: true
       };
       window.EventsStore.setEvents(events);
@@ -99,30 +100,35 @@ function stopActiveSession() {
 }
 
 function applySpentFromURL() {
+  const params = new URLSearchParams(window.location.search);
+
+  // cleanURL défini EN PREMIER pour pouvoir l'appeler partout
+  const cleanURL = () => {
+    params.delete("sid");
+    params.delete("spent");
+    params.delete("src");
+    const clean = params.toString();
+    const newUrl = window.location.pathname + (clean ? "?" + clean : "");
+    window.history.replaceState({}, "", newUrl);
+  };
+
   try {
-    const params = new URLSearchParams(window.location.search);
-    const sid = params.get("sid");
+    const sid      = params.get("sid");
     const spentRaw = params.get("spent");
 
-    // Validation stricte du sid
+    // Rien à faire si pas de sid
     if (!sid || spentRaw === null) return;
-    if (typeof sid !== "string" || sid.length > 80 || !/^[a-zA-Z0-9_\-]+$/.test(sid)) {
+
+    // Validation format sid
+    if (typeof sid !== "string" || sid.length > 80 || !/^[a-zA-Z0-9_-]+$/.test(sid)) {
       cleanURL();
       return;
     }
 
     const spent = Number.parseInt(spentRaw, 10);
 
-    const cleanURL = () => {
-      params.delete("sid");
-      params.delete("spent");
-      const clean = params.toString();
-      const newUrl = window.location.pathname + (clean ? `?${clean}` : "");
-      window.history.replaceState({}, "", newUrl);
-    };
-
-    if (!Number.isFinite(spent) || spent < 0 || spent > 240) {
-      alert("DEBUG — spent invalide: " + spentRaw + " (parsé: " + spent + ")");
+    // Validation valeur spent — max 8h
+    if (!Number.isFinite(spent) || spent < 0 || spent > 480) {
       cleanURL();
       return;
     }
@@ -137,11 +143,14 @@ function applySpentFromURL() {
 
     const event = events[idx];
 
+    // Session déjà traitée
     if (event.cancelled || event.minutesActual != null || event.finalized) {
+      if (getActiveSessionId() === sid) clearActiveSessionId();
       cleanURL();
       return;
     }
 
+    // Finalise la session avec le temps réel
     events[idx] = {
       ...event,
       minutesActual: spent,
@@ -151,14 +160,12 @@ function applySpentFromURL() {
     };
 
     window.EventsStore.setEvents(events);
-
-    const activeId = getActiveSessionId();
-    if (activeId === sid) clearActiveSessionId();
-
+    if (getActiveSessionId() === sid) clearActiveSessionId();
     cleanURL();
 
   } catch (e) {
     console.warn("applySpentFromURL error:", e);
+    cleanURL();
   }
 }
 
