@@ -228,11 +228,10 @@
   <script src="ui.js"></script>
   <script src="main.js"></script>
   <script>
+    // Désinscrit tout Service Worker existant
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/INTENT/sw.js")
-          .then(() => console.log("SW registered"))
-          .catch(e => console.warn("SW failed:", e));
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
       });
     }
   </script>
