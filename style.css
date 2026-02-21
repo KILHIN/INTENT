@@ -612,3 +612,77 @@ button:active { transform: scale(0.975); }
   body { padding: 40px 24px 80px; }
   .heroValue { font-size: 56px; }
 }
+
+/* ---------------------------------------------------------
+   SESSIONS DU JOUR
+   --------------------------------------------------------- */
+
+#todaySessionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.todayEmpty {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.todaySession {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  gap: 10px;
+}
+
+.tsLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tsApp {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tsIntent {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tsRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.tsTime {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tsDuration {
+  font-size: 13px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+}
+
+.ts-green    { background: var(--green-dim);  border-color: rgba(50,215,75,0.25);  color: var(--green); }
+.ts-orange   { background: var(--orange-dim); border-color: rgba(255,159,10,0.25); color: var(--orange); }
+.ts-red      { background: var(--red-dim);    border-color: rgba(255,59,48,0.25);  color: var(--red); }
+.ts-active   { background: rgba(255,255,255,0.06); border-color: var(--border-mid); color: var(--text); }
+.ts-cancelled{ background: rgba(255,255,255,0.03); border-color: var(--border);    color: var(--muted); }

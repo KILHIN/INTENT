@@ -471,6 +471,7 @@ function renderAll() {
   renderIntentStats();
   renderRisk();
   renderProfileTraits();
+  renderTodaySessions();
 }
 
 /* ---------------------------------------------------------
@@ -479,7 +480,73 @@ function renderAll() {
 
 window.UI = {
   showMenu, showIntent, showTimer, showCoach,
-  renderAll, launchCoach, selectApp, setStatsApp
+  renderAll, launchCoach, selectApp, setStatsApp,
+  renderTodaySessions
 };
 window.selectApp = selectApp;
 window.setStatsApp = setStatsApp;
+
+/* ---------------------------------------------------------
+   PATCH — renderTodaySessions (ajout accordéon sessions du jour)
+   --------------------------------------------------------- */
+
+function renderTodaySessions() {
+  const el = $("todaySessionsList");
+  if (!el) return;
+
+  const events = getEventsSafe();
+  const today = new Date().toDateString();
+
+  const sessions = events.filter(e =>
+    e.mode === "allow" &&
+    e.date === today &&
+    e.startedAt
+  ).sort((a, b) => a.startedAt - b.startedAt);
+
+  if (!sessions.length) {
+    el.innerHTML = `<p class="todayEmpty">Aucune session aujourd'hui.</p>`;
+    return;
+  }
+
+  const intentLabels = {
+    reply: "💬 Répondre",
+    fun:   "🎉 Fun",
+    auto:  "😶 Auto",
+    null:  "—"
+  };
+
+  el.innerHTML = sessions.map(e => {
+    const cfg = APP_CONFIG[e.app] || { icon: "📱", label: e.app };
+    const start = window.Sessions?.formatHHMM?.(e.startedAt) ?? "—";
+    const mins = e.minutes ?? 0;
+    const intent = intentLabels[e.intent] || "—";
+    const status = e.finalized
+      ? `${mins} min`
+      : e.cancelled
+        ? "Annulée"
+        : `En cours…`;
+
+    const statusClass = e.cancelled
+      ? "ts-cancelled"
+      : !e.finalized
+        ? "ts-active"
+        : mins >= (APP_CONFIG[e.app]?.thresholds?.red ?? 60)
+          ? "ts-red"
+          : mins >= (APP_CONFIG[e.app]?.thresholds?.orange ?? 30)
+            ? "ts-orange"
+            : "ts-green";
+
+    return `
+      <div class="todaySession">
+        <div class="tsLeft">
+          <span class="tsApp">${cfg.icon} ${cfg.label}</span>
+          <span class="tsIntent">${intent}</span>
+        </div>
+        <div class="tsRight">
+          <span class="tsTime">${start}</span>
+          <span class="tsDuration ${statusClass}">${status}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
