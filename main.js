@@ -163,6 +163,18 @@ function exportData() {
   URL.revokeObjectURL(url);
 }
 
+function resetToday() {
+  const today = new Date().toDateString();
+  const ok = confirm("Effacer toutes les sessions d'aujourd'hui ?\nCette action est irréversible.");
+  if (!ok) return;
+
+  const events = window.EventsStore.getEvents();
+  const kept = events.filter(e => e.date !== today);
+  window.EventsStore.setEvents(kept);
+  window.Sessions.clearActiveSessionId();
+  window.UI.renderAll();
+}
+
 function resetLoop() {
   const ok = confirm("Réinitialiser les données de boucle (openPings) ?");
   if (!ok) return;
@@ -206,6 +218,7 @@ window.logChoice = logChoice;
 window.logOutcome = logOutcome;
 window.exportData = exportData;
 window.resetLoop = resetLoop;
+window.resetToday = resetToday;
 window.triggerImport = window.triggerImport;
 
 /* ---------------------------------------------------------

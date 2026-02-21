@@ -788,16 +788,23 @@ function renderTodaySessions() {
   const now = Date.now();
   const activeId = window.Sessions?.getActiveSessionId?.() ?? null;
 
-  const sessions = events.filter(e => {
+  // Sessions du jour
+  let sessions = events.filter(e => {
     if (e.mode !== "allow") return false;
     if (e.date !== today) return false;
     if (!e.startedAt) return false;
-    // Toujours afficher la session active officielle
     if (e.sessionId && e.sessionId === activeId) return true;
-    // Cacher les sessions non finalisées qui ne sont pas la session active
     if (!e.finalized && !e.cancelled) return false;
     return true;
-  }).sort((a, b) => a.startedAt - b.startedAt);
+  }).sort((a, b) => b.startedAt - a.startedAt); // plus récente en premier
+
+  // Si aucune session aujourd'hui, affiche la dernière session finalisée tous jours confondus
+  if (sessions.length === 0) {
+    const last = [...events]
+      .filter(e => e.mode === "allow" && e.finalized && e.startedAt)
+      .sort((a, b) => b.startedAt - a.startedAt)[0];
+    if (last) sessions = [last];
+  }
 
   if (!sessions.length) {
     el.innerHTML = `<p class="todayEmpty">Aucune session aujourd'hui.</p>`;
