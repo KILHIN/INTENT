@@ -28,7 +28,9 @@ function normalizeEvent(e) {
   const intent = rawIntent && VALID_INTENTS.has(rawIntent) ? rawIntent : null;
 
   // Valide les minutes — jamais négatif, jamais > 480 (8h)
+  // IMPORTANT: null/undefined doit rester null (pas converti en 0 via Number())
   const clampMin = (v, max = 480) => {
+    if (v === null || v === undefined) return null;
     const n = Number(v);
     return Number.isFinite(n) && n >= 0 && n <= max ? n : null;
   };
