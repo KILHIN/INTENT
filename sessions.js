@@ -2,7 +2,8 @@
 const SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 min auto-finalize
 
 function newSessionId() {
-  return Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
+  return window.generateSessionId ? generateSessionId() :
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
 }
 
 function getActiveSessionId() {
@@ -107,7 +108,12 @@ function applySpentFromURL() {
     const sid = params.get("sid");
     const spentRaw = params.get("spent");
 
+    // Validation stricte du sid
     if (!sid || spentRaw === null) return;
+    if (typeof sid !== "string" || sid.length > 80 || !/^[a-zA-Z0-9_\-]+$/.test(sid)) {
+      cleanURL();
+      return;
+    }
 
     const spent = Number.parseInt(spentRaw, 10);
 
@@ -129,8 +135,6 @@ function applySpentFromURL() {
     const idx = events.findIndex(e => e.sessionId === sid);
 
     if (idx === -1) {
-      const sids = events.map(e => e.sessionId).filter(Boolean).slice(-3);
-      alert("DEBUG — sid introuvable.\nSid reçu: " + sid + "\nDerniers sids connus: " + (sids.join(", ") || "aucun"));
       cleanURL();
       return;
     }
@@ -138,7 +142,6 @@ function applySpentFromURL() {
     const event = events[idx];
 
     if (event.cancelled || event.minutesActual != null || event.finalized) {
-      alert("DEBUG — session déjà finalisée.\nfinalized=" + event.finalized + " cancelled=" + event.cancelled + " minutesActual=" + event.minutesActual);
       cleanURL();
       return;
     }
@@ -159,7 +162,6 @@ function applySpentFromURL() {
     cleanURL();
 
   } catch (e) {
-    alert("ERREUR applySpentFromURL: " + String(e));
     console.warn("applySpentFromURL error:", e);
   }
 }

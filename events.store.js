@@ -1,9 +1,12 @@
 /* =========================================================
-   EVENTS STORE — Single Source of Truth
+   EVENTS STORE — V4 Secured
    ========================================================= */
 
+const VALID_MODES   = new Set(["allow", "coach", "outcome", "unknown"]);
+const VALID_INTENTS = new Set(["reply", "fun", "auto"]);
+
 function isValidObject(v) {
-  return v && typeof v === "object";
+  return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
 function normalizeEvent(e) {
@@ -11,50 +14,73 @@ function normalizeEvent(e) {
 
   const ts = Number.isFinite(e.ts) ? e.ts : Date.now();
 
+  // Valide que l'app est connue
+  const app = (typeof e.app === "string" && APP_IDS.includes(e.app))
+    ? e.app
+    : "instagram";
+
+  // Valide le mode
+  const rawMode = e.mode || e.type || "unknown";
+  const mode = VALID_MODES.has(rawMode) ? rawMode : "unknown";
+
+  // Valide l'intent
+  const rawIntent = typeof e.intent === "string" ? e.intent : null;
+  const intent = rawIntent && VALID_INTENTS.has(rawIntent) ? rawIntent : null;
+
+  // Valide les minutes — jamais négatif, jamais > 480 (8h)
+  const clampMin = (v, max = 480) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 && n <= max ? n : null;
+  };
+
   return {
-    id: e.id || (e.sessionId ? e.sessionId : Math.random().toString(36).slice(2)),
-    sessionId: typeof e.sessionId === "string" ? e.sessionId : null,
+    id: typeof e.id === "string" ? e.id.slice(0, 64) : generateSessionId(),
+    sessionId: typeof e.sessionId === "string" ? e.sessionId.slice(0, 64) : null,
 
-    type: e.type || e.mode || "unknown",
-    mode: e.mode || e.type || "unknown",
-
-    app: e.app || "instagram",
+    type: mode,
+    mode,
+    app,
 
     ts,
-    date: typeof e.date === "string" ? e.date : new Date(ts).toDateString(),
+    date: typeof e.date === "string" ? e.date.slice(0, 40) : new Date(ts).toDateString(),
 
     startedAt: Number.isFinite(e.startedAt) ? e.startedAt : null,
-    endedAt: Number.isFinite(e.endedAt) ? e.endedAt : null,
+    endedAt:   Number.isFinite(e.endedAt)   ? e.endedAt   : null,
 
-    minutesPlanned: Number.isFinite(e.minutesPlanned) ? e.minutesPlanned : 10,
-    minutesActual: Number.isFinite(e.minutesActual) ? e.minutesActual : null,
-    minutes: Number.isFinite(e.minutes) ? e.minutes : 0,
+    minutesPlanned: clampMin(e.minutesPlanned) ?? 10,
+    minutesActual:  clampMin(e.minutesActual)  ?? null,
+    minutes:        clampMin(e.minutes)        ?? 0,
 
-    intent: typeof e.intent === "string" ? e.intent : null,
-    cancelled: !!e.cancelled,
-    finalized: !!e.finalized,
+    intent,
+    cancelled:      !!e.cancelled,
+    finalized:      !!e.finalized,
     staleFinalized: !!e.staleFinalized,
 
-    // coach fields
-    choice: e.choice || null,
-    actionKey: e.actionKey || null,
-    result: e.result || null
+    // coach fields — sanitisés
+    choice:    typeof e.choice    === "string" ? e.choice.slice(0, 32)    : null,
+    actionKey: typeof e.actionKey === "string" ? e.actionKey.slice(0, 32) : null,
+    result:    typeof e.result    === "string" ? e.result.slice(0, 32)    : null
   };
 }
 
 function sanitizeEvents(events) {
   if (!Array.isArray(events)) return [];
 
-  const seenSessionIds = new Set();
+  // Limite stricte : jamais plus de 10 000 events en mémoire
+  const MAX_EVENTS = 10000;
+  const seenIds = new Set();
   const cleaned = [];
 
   for (const raw of events) {
+    if (cleaned.length >= MAX_EVENTS) break;
+
     const e = normalizeEvent(raw);
     if (!e) continue;
 
+    // Déduplique par sessionId
     if (e.sessionId) {
-      if (seenSessionIds.has(e.sessionId)) continue;
-      seenSessionIds.add(e.sessionId);
+      if (seenIds.has(e.sessionId)) continue;
+      seenIds.add(e.sessionId);
     }
 
     cleaned.push(e);
@@ -66,33 +92,28 @@ function sanitizeEvents(events) {
 function getEvents() {
   const raw = Storage.get("events", []);
   const clean = sanitizeEvents(raw);
-
-  if (raw.length !== clean.length) {
-    Storage.set("events", clean);
-  }
-
+  if (raw.length !== clean.length) Storage.set("events", clean);
   return clean;
 }
 
 function setEvents(events) {
   const clean = sanitizeEvents(events);
-  Storage.set("events", clean);
+  const ok = Storage.set("events", clean);
+  if (!ok) console.error("setEvents: échec de sauvegarde");
 }
 
 function addEvent(evt) {
   const events = getEvents();
   const normalized = normalizeEvent(evt);
   if (!normalized) return null;
-
   events.push(normalized);
   setEvents(events);
   return normalized;
 }
 
 function findEventIndexBySessionId(sessionId) {
-  if (!sessionId) return -1;
-  const events = getEvents();
-  return events.findIndex(e => e.sessionId === sessionId);
+  if (typeof sessionId !== "string" || !sessionId) return -1;
+  return getEvents().findIndex(e => e.sessionId === sessionId);
 }
 
 function getTodayEvents() {
@@ -109,11 +130,7 @@ function getEventsByType(type) {
 }
 
 window.EventsStore = {
-  getEvents,
-  setEvents,
-  addEvent,
+  getEvents, setEvents, addEvent,
   findEventIndexBySessionId,
-  getTodayEvents,
-  getTotalMinutesToday,
-  getEventsByType
+  getTodayEvents, getTotalMinutesToday, getEventsByType
 };

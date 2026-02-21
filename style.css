@@ -686,3 +686,54 @@ button:active { transform: scale(0.975); }
 .ts-red      { background: var(--red-dim);    border-color: rgba(255,59,48,0.25);  color: var(--red); }
 .ts-active   { background: rgba(255,255,255,0.06); border-color: var(--border-mid); color: var(--text); }
 .ts-cancelled{ background: rgba(255,255,255,0.03); border-color: var(--border);    color: var(--muted); }
+
+/* ---------------------------------------------------------
+   STREAK + DAILY SUMMARY + AUTO-COACH BANNER
+   --------------------------------------------------------- */
+
+.streakBadge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 159, 10, 0.12);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  color: var(--orange);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dailySummary {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.autoCoachBanner {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.autoCoachBanner button {
+  background: rgba(255, 59, 48, 0.2);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: var(--red);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

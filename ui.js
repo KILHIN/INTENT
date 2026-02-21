@@ -153,6 +153,91 @@ function renderHero() {
 
   // Mini breakdown par app dans le hero
   renderAppBreakdown(byApp);
+
+  // Streak
+  renderStreak(events);
+
+  // Résumé de fin de journée (après 20h)
+  const hour = new Date().getHours();
+  if (hour >= 20) renderDailySummary(events, byApp);
+
+  // Auto-coach si 3 sessions "auto" aujourd'hui
+  checkAutoCoach(events);
+}
+
+function renderStreak(events) {
+  const el = document.getElementById("streakBadge");
+  if (!el) return;
+
+  const streak = computeStreak(events);
+  if (streak === 0) {
+    el.classList.add("hidden");
+    return;
+  }
+
+  el.classList.remove("hidden");
+  el.innerHTML = `🔥 ${streak} jour${streak > 1 ? "s" : ""} sans dépasser les seuils`;
+}
+
+function computeStreak(events) {
+  let streak = 0;
+  const now = new Date();
+
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    if (i === 0) continue; // on ne compte pas aujourd'hui (journée en cours)
+
+    const dateStr = d.toDateString();
+    const dayEvents = events.filter(e => e.date === dateStr && e.mode === "allow");
+
+    // Calcule le total par app ce jour-là
+    let exceeded = false;
+    for (const appId of APP_IDS) {
+      const cfg = APP_CONFIG[appId];
+      const total = dayEvents
+        .filter(e => e.app === appId)
+        .reduce((s, e) => s + (e.minutes || 0), 0);
+      if (total >= cfg.thresholds.red) { exceeded = true; break; }
+    }
+
+    if (exceeded) break;
+    streak++;
+  }
+
+  return streak;
+}
+
+function renderDailySummary(events, byApp) {
+  const el = document.getElementById("dailySummary");
+  if (!el) return;
+
+  const total = Object.values(byApp).reduce((s, v) => s + v, 0);
+  if (total === 0) { el.classList.add("hidden"); return; }
+
+  const streak = computeStreak(events);
+  const streakMsg = streak > 0 ? ` · 🔥 ${streak}j de suite` : "";
+
+  el.classList.remove("hidden");
+  el.textContent = `Bilan du jour : ${total} min de scroll total${streakMsg}`;
+}
+
+function checkAutoCoach(events) {
+  const today = new Date().toDateString();
+  const autoToday = events.filter(e =>
+    e.date === today &&
+    e.mode === "allow" &&
+    e.intent === "auto"
+  ).length;
+
+  const banner = document.getElementById("autoCoachBanner");
+  if (!banner) return;
+
+  if (autoToday >= 3) {
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
 }
 
 function renderAppBreakdown(byApp) {
@@ -496,13 +581,6 @@ function renderTodaySessions() {
 
   const events = getEventsSafe();
   const today = new Date().toDateString();
-
-  // DEBUG — affiche ce qu'on a
-  console.log("TODAY:", today);
-  console.log("EVENTS:", events.length);
-  events.slice(-3).forEach(e => {
-    console.log(" →", e.mode, e.date, e.app, e.minutes, "sid:", e.sessionId?.slice(0,8));
-  });
 
   const sessions = events.filter(e =>
     e.mode === "allow" &&

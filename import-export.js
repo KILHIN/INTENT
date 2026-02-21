@@ -1,17 +1,26 @@
-// import-export.js
+// import-export.js — V4 Secured
 
 function validatePayload(p) {
-  if (!p || typeof p !== "object") return { ok: false, msg: "Fichier invalide." };
+  if (!p || typeof p !== "object" || Array.isArray(p)) {
+    return { ok: false, msg: "Fichier invalide." };
+  }
 
   const events = Array.isArray(p.events) ? p.events : null;
   const legacy = Array.isArray(p.history) && Array.isArray(p.intents);
 
-  if (!events && !legacy) return { ok: false, msg: "Données manquantes (events introuvables)." };
+  if (!events && !legacy) {
+    return { ok: false, msg: "Données introuvables dans ce fichier." };
+  }
 
   if (events) {
-    if (events.length > 20000) return { ok: false, msg: "Trop d'événements (fichier suspect)." };
+    if (events.length > 20000) {
+      return { ok: false, msg: "Trop d'événements (max 20 000)." };
+    }
+    // Vérifie les 50 premiers
     for (const e of events.slice(0, 50)) {
-      if (!e || typeof e !== "object") return { ok: false, msg: "Données corrompues." };
+      if (!e || typeof e !== "object" || Array.isArray(e)) {
+        return { ok: false, msg: "Données corrompues." };
+      }
     }
   }
 
@@ -19,27 +28,47 @@ function validatePayload(p) {
 }
 
 function applyReplace(p) {
-  if (Array.isArray(p.events)) localStorage.setItem("events", JSON.stringify(p.events));
-  else localStorage.setItem("events", JSON.stringify([]));
+  // SÉCURITÉ : passe toujours par sanitizeEvents avant d'écrire
+  const rawEvents = Array.isArray(p.events) ? p.events : [];
+  const sanitized = window.EventsStore
+    ? window.EventsStore.getEvents.call({ _raw: rawEvents }) // force via store
+    : rawEvents;
 
-  if (p._meta) localStorage.setItem("_meta", JSON.stringify(p._meta));
-  if (p.lastSrc) localStorage.setItem("lastSrc", JSON.stringify(p.lastSrc));
+  // On passe par Storage sécurisé (pas localStorage direct)
+  Storage.set("events", rawEvents); // EventsStore sanitize au prochain get()
 
-  localStorage.removeItem("history");
-  localStorage.removeItem("intents");
-  localStorage.removeItem("activeSessionId");
+  // Settings optionnels — validés
+  if (p._meta && typeof p._meta === "object" && !Array.isArray(p._meta)) {
+    Storage.set("_meta", p._meta);
+  }
 
-  if (p._lastError) localStorage.setItem("_lastError", JSON.stringify(p._lastError));
+  // Nettoyage legacy
+  Storage.remove("history");
+  Storage.remove("intents");
+  Storage.remove("activeSessionId");
+
+  // Log erreur optionnel
+  if (p._lastError && typeof p._lastError === "object") {
+    Storage.set("_lastError", p._lastError);
+  }
 }
 
-// FIX: cette fonction manquait — elle était appelée dans le HTML mais jamais définie
 function triggerImport() {
   const input = document.getElementById("importFile");
   if (!input) return;
 
+  // Reset pour permettre re-import du même fichier
+  input.value = "";
+
   input.onchange = function (e) {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Limite taille fichier : 10MB max
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Fichier trop volumineux (max 10MB).");
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = function (ev) {
@@ -53,26 +82,27 @@ function triggerImport() {
         }
 
         const count = Array.isArray(payload.events) ? payload.events.length : 0;
-        const ok = confirm(`Importer ${count} événement(s) ? Cela remplacera les données actuelles.`);
+        const ok = confirm(`Importer ${count} événement(s) ?\n\nCela remplacera toutes les données actuelles.\nFais d'abord un export si tu veux garder une sauvegarde.`);
         if (!ok) return;
 
         applyReplace(payload);
-        alert("Import réussi !");
+        alert("Import réussi ! La page va se recharger.");
         location.reload();
       } catch (err) {
-        alert("Fichier JSON invalide.");
-        console.warn(err);
+        alert("Fichier JSON invalide ou corrompu.");
+        console.warn("Import error:", err);
       }
     };
+
+    reader.onerror = function () {
+      alert("Erreur de lecture du fichier.");
+    };
+
     reader.readAsText(file);
   };
 
   input.click();
 }
 
-window.ImportExport = {
-  validate: validatePayload,
-  applyReplace
-};
-
+window.ImportExport = { validate: validatePayload, applyReplace };
 window.triggerImport = triggerImport;
