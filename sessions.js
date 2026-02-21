@@ -120,17 +120,25 @@ function applySpentFromURL() {
     };
 
     if (!Number.isFinite(spent) || spent < 0 || spent > 240) {
+      alert("DEBUG — spent invalide: " + spentRaw + " (parsé: " + spent + ")");
       cleanURL();
       return;
     }
 
     const events = window.EventsStore.getEvents();
     const idx = events.findIndex(e => e.sessionId === sid);
-    if (idx === -1) { cleanURL(); return; }
+
+    if (idx === -1) {
+      const sids = events.map(e => e.sessionId).filter(Boolean).slice(-3);
+      alert("DEBUG — sid introuvable.\nSid reçu: " + sid + "\nDerniers sids connus: " + (sids.join(", ") || "aucun"));
+      cleanURL();
+      return;
+    }
 
     const event = events[idx];
 
     if (event.cancelled || event.minutesActual != null || event.finalized) {
+      alert("DEBUG — session déjà finalisée.\nfinalized=" + event.finalized + " cancelled=" + event.cancelled + " minutesActual=" + event.minutesActual);
       cleanURL();
       return;
     }
@@ -149,7 +157,9 @@ function applySpentFromURL() {
     if (activeId === sid) clearActiveSessionId();
 
     cleanURL();
+
   } catch (e) {
+    alert("ERREUR applySpentFromURL: " + String(e));
     console.warn("applySpentFromURL error:", e);
   }
 }
