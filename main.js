@@ -352,11 +352,41 @@ function resetAll() {
   location.reload();
 }
 
-window.purgeOrphans = purgeOrphans;
-window.debugState = debugState;
+function clearCache() {
+  const ok = confirm("Vider le cache et recharger la page ?");
+  if (!ok) return;
+  if ("caches" in window) {
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k)))
+    ).then(() => location.reload(true));
+  } else {
+    location.reload(true);
+  }
+}
+
+function bindToolButtons() {
+  const map = {
+    "btnResetToday":   resetToday,
+    "btnPurgeOrphans": purgeOrphans,
+    "btnDebugState":   debugState,
+    "btnCopyLogs":     copyLogs,
+    "btnResetAll":     resetAll,
+    "btnClearCache":   clearCache,
+    "btnCloseDebug":   closeDebugModal,
+    "btnCloseDebug2":  closeDebugModal,
+  };
+  for (const [id, fn] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", fn);
+  }
+}
+
+window.purgeOrphans    = purgeOrphans;
+window.debugState      = debugState;
 window.closeDebugModal = closeDebugModal;
-window.copyLogs = copyLogs;
-window.resetAll = resetAll;
+window.copyLogs        = copyLogs;
+window.resetAll        = resetAll;
+window.clearCache      = clearCache;
 window.triggerImport = window.triggerImport;
 
 /* ---------------------------------------------------------
@@ -373,6 +403,7 @@ window.triggerImport = window.triggerImport;
     if (!window.UI) throw new Error("UI manquant");
 
     window.UI.showMenu();
+    bindToolButtons();
 
     const params = new URLSearchParams(window.location.search);
     const src = params.get("src");

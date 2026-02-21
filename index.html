@@ -212,21 +212,22 @@
           <input id="importFile" type="file" accept="application/json" class="hidden" />
           <button onclick="triggerImport()">Importer des données (JSON)</button>
 
-          <button onclick="resetToday()" class="btnDanger">🗑 Effacer les sessions du jour</button>
-          <button onclick="purgeOrphans()">🧹 Purger sessions orphelines</button>
-          <button onclick="debugState()">🔍 Debug état interne</button>
-          <button onclick="copyLogs()">📋 Copier logs</button>
-          <button onclick="resetAll()" class="btnDanger">💣 Reset complet</button>
+          <button id="btnResetToday" class="btnDanger">🗑 Effacer les sessions du jour</button>
+          <button id="btnPurgeOrphans">🧹 Purger sessions orphelines</button>
+          <button id="btnDebugState">🔍 Debug état interne</button>
+          <button id="btnCopyLogs">📋 Copier logs</button>
+          <button id="btnResetAll" class="btnDanger">💣 Reset complet</button>
+          <button id="btnClearCache" class="btnDanger">🔄 Vider cache &amp; recharger</button>
 
           <!-- Modale debug -->
           <div id="debugModal" class="debugModal hidden">
             <div class="debugModalInner">
               <div class="debugModalHeader">
                 <span>État interne</span>
-                <button onclick="closeDebugModal()">✕</button>
+                <button id="btnCloseDebug">✕</button>
               </div>
               <pre id="debugOutput" class="debugOutput"></pre>
-              <button onclick="closeDebugModal()" class="debugModalClose">Fermer</button>
+              <button id="btnCloseDebug2" class="debugModalClose">Fermer</button>
             </div>
           </div>
         </div>
