@@ -806,9 +806,29 @@ function renderTodaySessions() {
     if (last) sessions = [last];
   }
 
+  // Met à jour le résumé dans le titre de l'accordion
+  const accordion = document.getElementById("todayAccordion");
+  const summary = accordion?.querySelector("summary");
+
   if (!sessions.length) {
     el.innerHTML = `<p class="todayEmpty">Aucune session aujourd'hui.</p>`;
+    if (summary) summary.innerHTML = `Sessions du jour <span class="accordionBadge">0</span>`;
     return;
+  }
+
+  // Badge avec nombre de sessions + total minutes du jour
+  const todaySessions = sessions.filter(e => e.date === today);
+  const totalMin = todaySessions.reduce((s, e) => s + (e.minutes || 0), 0);
+  const count = todaySessions.length;
+
+  if (summary) {
+    summary.innerHTML = `Sessions du jour <span class="accordionBadge">${count} · ${totalMin} min</span>`;
+  }
+
+  // Ouvre automatiquement si session en cours ou si sessions aujourd'hui
+  const hasToday = todaySessions.length > 0;
+  if (accordion && hasToday && !accordion.open) {
+    accordion.open = true;
   }
 
   const intentLabels = {
