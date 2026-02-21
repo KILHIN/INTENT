@@ -45,32 +45,28 @@ function getActiveSession(events) {
   const maxAgeMs = 3 * 60 * 60 * 1000;
   const activeId = getActiveSessionId();
 
+  const isOpen = (e) =>
+    e &&
+    e.mode === "allow" &&
+    !e.finalized &&
+    !e.cancelled &&
+    e.minutesActual == null &&
+    e.startedAt &&
+    (now - e.startedAt) <= maxAgeMs;
+
+  // Priorité à la session active enregistrée
   if (activeId) {
     const e = events.find(x => x.sessionId === activeId);
-    if (
-      e &&
-      e.mode === "allow" &&
-      e.minutesActual == null &&
-      !e.cancelled &&
-      e.startedAt &&
-      (now - e.startedAt) <= maxAgeMs
-    ) {
-      return e;
-    }
+    if (isOpen(e)) return e;
+    // Si l'activeId ne correspond plus à rien d'ouvert, on le nettoie
+    clearActiveSessionId();
   }
 
+  // Fallback : cherche la dernière session ouverte
   for (let i = events.length - 1; i >= 0; i--) {
-    const e = events[i];
-    if (
-      e?.mode === "allow" &&
-      e.minutesActual == null &&
-      !e.cancelled &&
-      e.startedAt &&
-      (now - e.startedAt) <= maxAgeMs
-    ) {
-      return e;
-    }
+    if (isOpen(events[i])) return events[i];
   }
+
   return null;
 }
 

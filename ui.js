@@ -786,14 +786,16 @@ function renderTodaySessions() {
   const today = new Date().toDateString();
 
   const now = Date.now();
-  const STALE_MS = 5 * 60 * 1000; // 5 min
+  const activeId = window.Sessions?.getActiveSessionId?.() ?? null;
 
   const sessions = events.filter(e => {
     if (e.mode !== "allow") return false;
     if (e.date !== today) return false;
     if (!e.startedAt) return false;
-    // Cache les sessions "En cours" orphelines (> 5 min sans finalisation)
-    if (!e.finalized && !e.cancelled && (now - e.startedAt) > STALE_MS) return false;
+    // Toujours afficher la session active officielle
+    if (e.sessionId && e.sessionId === activeId) return true;
+    // Cacher les sessions non finalisées qui ne sont pas la session active
+    if (!e.finalized && !e.cancelled) return false;
     return true;
   }).sort((a, b) => a.startedAt - b.startedAt);
 
