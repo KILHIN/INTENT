@@ -101,7 +101,7 @@ function purgeOldEvents() {
     const kept = events.filter(e => !e.ts || e.ts >= cutoff);
     if (kept.length < before) {
       Storage.set("events", kept);
-      console.log(`Purge: ${before - kept.length} events supprimés (> 90j)`);
+`);
     }
     const kb = Storage.sizeKB();
     if (kb > 3500) console.warn(`Stockage élevé: ${kb}KB`);
