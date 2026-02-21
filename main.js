@@ -281,11 +281,8 @@ function debugState() {
   };
 
   const output = Object.entries(info)
-    .map(([k, v]) => `${k}
-  ${v}`)
-    .join("
-
-");
+    .map(([k, v]) => k + "\n  " + v)
+    .join("\n\n");
 
   const el = document.getElementById("debugOutput");
   const modal = document.getElementById("debugModal");
@@ -321,8 +318,7 @@ function copyLogs() {
     ...events.slice(-10).reverse().map(e =>
       `${e.mode} | ${e.app ?? "?"} | ${e.date} | finalized:${e.finalized} | cancelled:${e.cancelled}`
     )
-  ].join("
-");
+  ].join("\n");
 
   navigator.clipboard.writeText(lines)
     .then(() => alert("Logs copiés dans le presse-papier ✓"))
