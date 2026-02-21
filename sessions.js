@@ -1,5 +1,5 @@
 // sessions.js
-const SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 min auto-finalize
+const SESSION_MAX_AGE_MS = 5 * 60 * 1000; // 5 min auto-finalize
 
 function newSessionId() {
   return window.generateSessionId ? generateSessionId() :

@@ -785,11 +785,17 @@ function renderTodaySessions() {
   const events = getEventsSafe();
   const today = new Date().toDateString();
 
-  const sessions = events.filter(e =>
-    e.mode === "allow" &&
-    e.date === today &&
-    e.startedAt
-  ).sort((a, b) => a.startedAt - b.startedAt);
+  const now = Date.now();
+  const STALE_MS = 5 * 60 * 1000; // 5 min
+
+  const sessions = events.filter(e => {
+    if (e.mode !== "allow") return false;
+    if (e.date !== today) return false;
+    if (!e.startedAt) return false;
+    // Cache les sessions "En cours" orphelines (> 5 min sans finalisation)
+    if (!e.finalized && !e.cancelled && (now - e.startedAt) > STALE_MS) return false;
+    return true;
+  }).sort((a, b) => a.startedAt - b.startedAt);
 
   if (!sessions.length) {
     el.innerHTML = `<p class="todayEmpty">Aucune session aujourd'hui.</p>`;

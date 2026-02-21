@@ -39,6 +39,27 @@ function setIntentAndStart(intent) {
     return;
   }
 
+  // Finalise automatiquement toute session encore ouverte
+  const existingId = window.Sessions.getActiveSessionId();
+  if (existingId) {
+    const allEvents = window.EventsStore.getEvents();
+    const idx = allEvents.findIndex(e => e.sessionId === existingId);
+    if (idx !== -1 && !allEvents[idx].finalized && !allEvents[idx].cancelled) {
+      const now0 = Date.now();
+      const spent = Math.round((now0 - (allEvents[idx].startedAt || now0)) / 60000);
+      allEvents[idx] = {
+        ...allEvents[idx],
+        endedAt: now0,
+        minutesActual: spent,
+        minutes: spent,
+        finalized: true,
+        staleFinalized: true
+      };
+      window.EventsStore.setEvents(allEvents);
+    }
+    window.Sessions.clearActiveSessionId();
+  }
+
   const appId = pendingSessionApp || "instagram";
   const cfg = APP_CONFIG[appId];
   const sid = window.Sessions.newSessionId();
@@ -51,7 +72,7 @@ function setIntentAndStart(intent) {
     mode: "allow",
     app: appId,
     minutes: 0,
-    minutesPlanned: cfg.thresholds.orange, // seuil orange = durée prévue par défaut
+    minutesPlanned: cfg.thresholds.orange,
     minutesActual: null,
     intent,
     sessionId: sid,
