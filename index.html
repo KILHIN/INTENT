@@ -192,12 +192,15 @@
       <details class="accordion">
         <summary>Analyse 7 jours</summary>
         <div class="accordion__content">
+          <!-- Sélecteur de jour -->
+          <div id="chartDayPicker" class="chartDayPicker"></div>
           <canvas id="chart" width="360" height="200"></canvas>
-          <div class="chartToggleWrap">
-            <button id="chartToggle" class="chartToggleBtn" onclick="toggleChartMode()">Vue par intention</button>
+          <!-- Boutons de vue -->
+          <div class="chartControls">
+            <button id="chartToggle" class="chartToggleBtn" onclick="toggleChartMode()">Par intention</button>
           </div>
-          <p id="prediction"></p>
-          <p id="intentStats"></p>
+          <div id="prediction"></div>
+          <div id="intentStats"></div>
         </div>
       </details>
 

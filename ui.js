@@ -313,12 +313,48 @@ function selectApp(appId) {
 
 // Mode du graphique : "app" ou "intent"
 let _chartMode = "app";
+// Jour sélectionné : null = 7 jours, sinon dateString
+let _chartDay = null;
 
 function toggleChartMode() {
   _chartMode = _chartMode === "app" ? "intent" : "app";
   const btn = document.getElementById("chartToggle");
-  if (btn) btn.textContent = _chartMode === "app" ? "Vue par intention" : "Vue par app";
+  if (btn) btn.textContent = _chartMode === "app" ? "Par intention" : "Par app";
   drawChart(_statsApp);
+}
+
+function selectChartDay(dateStr) {
+  _chartDay = _chartDay === dateStr ? null : dateStr;
+  renderDayPicker();
+  drawChart(_statsApp);
+}
+
+function renderDayPicker() {
+  const el = document.getElementById("chartDayPicker");
+  if (!el) return;
+
+  const events = getEventsSafe();
+  const today = new Date();
+
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(today.getDate() - i);
+    days.push(d.toDateString());
+  }
+
+  const dayLabels = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+
+  el.innerHTML = days.map(dateStr => {
+    const d = new Date(dateStr);
+    const label = dateStr === today.toDateString() ? "Auj" : dayLabels[d.getDay()];
+    const hasData = events.some(e => e.date === dateStr && e.mode === "allow" && e.finalized);
+    const isActive = _chartDay === dateStr;
+    return `<button
+      class="dayPickerBtn ${isActive ? "dayPickerBtn--active" : ""} ${hasData ? "" : "dayPickerBtn--empty"}"
+      onclick="selectChartDay('${dateStr}')"
+    >${label}</button>`;
+  }).join("");
 }
 
 function drawChart(appId = null) {
@@ -332,8 +368,18 @@ function drawChart(appId = null) {
   const orangeThresh = cfg ? cfg.thresholds.orange : 30;
   const redThresh    = cfg ? cfg.thresholds.red    : 90;
 
-  const last7 = Engine.last7DaysMap(events, appId);
-  const dates  = Object.keys(last7);
+  // Si un jour est sélectionné, on affiche les sessions de ce jour
+  // sinon on affiche les 7 derniers jours
+  let dates;
+  let isSingleDay = false;
+
+  if (_chartDay) {
+    dates = [_chartDay];
+    isSingleDay = true;
+  } else {
+    const last7 = Engine.last7DaysMap(events, appId);
+    dates = Object.keys(last7);
+  }
 
   // Couleurs par app
   const appColors = {
@@ -353,13 +399,14 @@ function drawChart(appId = null) {
   };
 
   // Construit les stacks selon le mode
-  const stacks = dates.map(dateStr => {
-    const dayEvents = events.filter(e =>
-      e.date === dateStr &&
-      e.mode === "allow" &&
-      (e.finalized || e.minutesActual != null)
-    );
+  const stacks = isSingleDay
+    ? buildSingleDayStacks(events, dates[0])
+    : dates.map(dateStr => buildDayStack(events, dateStr, appColors, intentColors));
 
+  function buildDayStack(events, dateStr, appColors, intentColors) {
+    const dayEvents = events.filter(e =>
+      e.date === dateStr && e.mode === "allow" && (e.finalized || e.minutesActual != null)
+    );
     if (_chartMode === "app") {
       const byApp = {};
       for (const id of APP_IDS) byApp[id] = 0;
@@ -367,18 +414,32 @@ function drawChart(appId = null) {
         const k = APP_IDS.includes(e.app) ? e.app : "unknown";
         byApp[k] = (byApp[k] || 0) + (e.minutes || 0);
       }
-      const total = Object.values(byApp).reduce((s, v) => s + v, 0);
-      return { dateStr, segments: byApp, segmentKeys: APP_IDS, total };
+      return { dateStr, segments: byApp, segmentKeys: APP_IDS, total: Object.values(byApp).reduce((s,v)=>s+v,0) };
     } else {
       const byIntent = { reply: 0, fun: 0, auto: 0, null: 0 };
       for (const e of dayEvents) {
         const k = intentColors[e.intent] ? e.intent : "null";
         byIntent[k] += e.minutes || 0;
       }
-      const total = Object.values(byIntent).reduce((s, v) => s + v, 0);
-      return { dateStr, segments: byIntent, segmentKeys: ["reply", "fun", "auto", "null"], total };
+      return { dateStr, segments: byIntent, segmentKeys: ["reply","fun","auto","null"], total: Object.values(byIntent).reduce((s,v)=>s+v,0) };
     }
-  });
+  }
+
+  // Vue jour unique : une barre par session, triées par heure
+  function buildSingleDayStacks(events, dateStr) {
+    const dayEvents = events
+      .filter(e => e.date === dateStr && e.mode === "allow" && (e.finalized || e.minutesActual != null))
+      .sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0));
+
+    if (dayEvents.length === 0) return [{ dateStr, segments: {}, segmentKeys: [], total: 0, label: "Aucune" }];
+
+    return dayEvents.map(e => {
+      const key = _chartMode === "app" ? (e.app || "unknown") : (e.intent || "null");
+      const segments = { [key]: e.minutes || 0 };
+      const label = e.startedAt ? new Date(e.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+      return { dateStr, segments, segmentKeys: [key], total: e.minutes || 0, label };
+    });
+  }
 
   const maxValue = Math.max(...stacks.map(s => s.total), redThresh + 10);
   const colors = _chartMode === "app" ? appColors : intentColors;
@@ -408,7 +469,8 @@ function drawChart(appId = null) {
   const gap  = 6;
   const dayLabels = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
-  stacks.forEach(({ dateStr, segments, segmentKeys, total }, i) => {
+  stacks.forEach((stack, i) => {
+    const { dateStr, segments, segmentKeys, total } = stack;
     const x = PL + i * (barW + gap) + (chartW - stacks.length * (barW + gap)) / 2;
     const isToday = dateStr === new Date().toDateString();
 
@@ -453,12 +515,14 @@ function drawChart(appId = null) {
       ctx.fillText(total + "m", x + barW / 2, topY - 6);
     }
 
-    // Label jour
-    const dateObj = new Date(dateStr);
-    ctx.fillStyle = isToday ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.42)";
-    ctx.font = (isToday ? "bold " : "") + "11px -apple-system, sans-serif";
+    // Label jour ou heure selon le mode
+    const labelText = stack.label
+      ? stack.label
+      : (isToday ? "Auj" : dayLabels[new Date(dateStr).getDay()]);
+    ctx.fillStyle = isToday && !stack.label ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.55)";
+    ctx.font = (isToday && !stack.label ? "bold " : "") + "10px -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(dayLabels[dateObj.getDay()], x + barW / 2, H - PB + 16);
+    ctx.fillText(labelText, x + barW / 2, H - PB + 16);
   });
 
   // Légende dynamique
@@ -528,13 +592,26 @@ function renderPrediction() {
   const appId = _statsApp;
   const cfg = appId ? APP_CONFIG[appId] : null;
   const orange = cfg ? cfg.thresholds.orange : 30;
-  const red = cfg ? cfg.thresholds.red : 90;
+  const red = cfg ? cfg.thresholds.red : 60;
 
   const pred = Engine.trendPrediction(events, orange, red, appId);
-  const label = appId ? `${APP_CONFIG[appId].icon} ${APP_CONFIG[appId].label}` : "Toutes apps";
 
-  $("prediction").innerText =
-    `${label} · Moyenne 7j : ${pred.avg} min/j · Projection : ${pred.weeklyProjection} min/sem · ${pred.trendText}`;
+  $("prediction").innerHTML = `
+    <div class="statRow">
+      <span class="statItem">
+        <span class="statLabel">Moyenne 7j</span>
+        <span class="statValue">${pred.avg} <small>min/j</small></span>
+      </span>
+      <span class="statItem">
+        <span class="statLabel">Projection</span>
+        <span class="statValue">${pred.weeklyProjection} <small>min/sem</small></span>
+      </span>
+      <span class="statItem">
+        <span class="statLabel">Tendance</span>
+        <span class="statValue statTrend">${pred.trendText}</span>
+      </span>
+    </div>
+  `;
 }
 
 function renderIntentStats() {
@@ -543,11 +620,28 @@ function renderIntentStats() {
   const events = getEventsSafe();
   const appId = _statsApp;
   const s = Engine.intentStats7d(events, appId);
-  const label = appId ? `${APP_CONFIG[appId].label}` : "Toutes apps";
 
-  $("intentStats").innerText = s.total
-    ? `Intentions ${label} (7j, n=${s.total}) — Répondre : ${s.pReply}% · Fun : ${s.pFun}% · Auto : ${s.pAuto}%`
-    : `Intentions ${label} (7j) : aucune donnée encore.`;
+  if (!s.total) {
+    $("intentStats").innerHTML = `<p class="statEmpty">Pas encore de données sur 7 jours.</p>`;
+    return;
+  }
+
+  $("intentStats").innerHTML = `
+    <div class="statRow">
+      <span class="statItem">
+        <span class="statLabel">💬 Répondre</span>
+        <span class="statValue statReply">${s.pReply}%</span>
+      </span>
+      <span class="statItem">
+        <span class="statLabel">🎉 Fun</span>
+        <span class="statValue statFun">${s.pFun}%</span>
+      </span>
+      <span class="statItem">
+        <span class="statLabel">😶 Auto</span>
+        <span class="statValue statAuto">${s.pAuto}%</span>
+      </span>
+    </div>
+  `;
 }
 
 /* ---------------------------------------------------------
@@ -649,6 +743,7 @@ function renderAll() {
   renderSessionBanner();
   renderAppSelector();
   renderStatsTabBar();
+  renderDayPicker();
   drawChart(_statsApp);
   renderPrediction();
   renderIntentStats();
@@ -664,11 +759,12 @@ function renderAll() {
 window.UI = {
   showMenu, showIntent, showTimer, showCoach,
   renderAll, launchCoach, selectApp, setStatsApp,
-  renderTodaySessions, toggleChartMode
+  renderTodaySessions, toggleChartMode, selectChartDay
 };
 window.selectApp = selectApp;
 window.setStatsApp = setStatsApp;
 window.toggleChartMode = toggleChartMode;
+window.selectChartDay = selectChartDay;
 
 /* ---------------------------------------------------------
    PATCH — renderTodaySessions (ajout accordéon sessions du jour)
