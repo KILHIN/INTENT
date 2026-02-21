@@ -42,8 +42,14 @@ Analytics.computeRisk = function ({ events, thresholds, openPings = [], now = ne
   const loop = loopStatus(openPings);
 
   const hour = now.getHours();
+  const dayOfWeek = now.getDay(); // 0=dim, 1=lun, ..., 5=ven, 6=sam
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
   const isLate = hour >= 22;
-  const isWork = hour >= 9 && hour <= 18;
+  // Heures de travail : lun-ven, 8h-12h et 14h-18h
+  const isWork = isWeekday && (
+    (hour >= 8 && hour < 12) ||
+    (hour >= 14 && hour < 18)
+  );
 
   let score = 8;
   const reasons = [];
@@ -138,6 +144,12 @@ Analytics.computeProfile = function ({ events }) {
   }
 
   const isWeekday = (d) => { const day = d.getDay(); return day >= 1 && day <= 5; };
+  // Heures de travail : lun-ven, 8h-12h et 14h-18h
+  const isWorkHour = (d) => {
+    if (!isWeekday(d)) return false;
+    const h = d.getHours();
+    return (h >= 8 && h < 12) || (h >= 14 && h < 18);
+  };
   let night = 0, work = 0, auto = 0, shortB = 0, longB = 0, total = 0;
 
   for (const e of allow) {
@@ -146,7 +158,7 @@ Analytics.computeProfile = function ({ events }) {
     const m = e.minutes || 0;
     total++;
     if (h >= 22) night++;
-    if (isWeekday(d) && h >= 9 && h <= 18) work++;
+    if (isWorkHour(d)) work++;
     if (e.intent === "auto") auto++;
     if (m > 0 && m <= 3) shortB++;
     if (m >= 12) longB++;

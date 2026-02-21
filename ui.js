@@ -311,32 +311,88 @@ function selectApp(appId) {
    6) CHART — par app ou global
    --------------------------------------------------------- */
 
+// Mode du graphique : "app" ou "intent"
+let _chartMode = "app";
+
+function toggleChartMode() {
+  _chartMode = _chartMode === "app" ? "intent" : "app";
+  const btn = document.getElementById("chartToggle");
+  if (btn) btn.textContent = _chartMode === "app" ? "Vue par intention" : "Vue par app";
+  drawChart(_statsApp);
+}
+
 function drawChart(appId = null) {
   if (!has("chart") || !window.Engine) return;
 
   const canvas = $("chart");
   const ctx = canvas.getContext("2d");
   const events = getEventsSafe();
-  const data = Engine.last7DaysMap(events, appId);
 
   const cfg = appId ? APP_CONFIG[appId] : null;
   const orangeThresh = cfg ? cfg.thresholds.orange : 30;
-  const redThresh = cfg ? cfg.thresholds.red : 90;
+  const redThresh    = cfg ? cfg.thresholds.red    : 90;
 
-  const values = Object.values(data);
-  const dates = Object.keys(data);
-  const maxValue = Math.max(...values, redThresh + 10);
+  const last7 = Engine.last7DaysMap(events, appId);
+  const dates  = Object.keys(last7);
+
+  // Couleurs par app
+  const appColors = {
+    instagram: "rgba(193,53,132,0.85)",
+    x:         "rgba(29,161,242,0.85)",
+    facebook:  "rgba(66,103,178,0.85)",
+    youtube:   "rgba(255,0,0,0.85)",
+    unknown:   "rgba(180,180,180,0.5)"
+  };
+
+  // Couleurs par intention
+  const intentColors = {
+    reply: "rgba(10,132,255,0.85)",
+    fun:   "rgba(52,199,89,0.85)",
+    auto:  "rgba(255,69,58,0.85)",
+    null:  "rgba(180,180,180,0.4)"
+  };
+
+  // Construit les stacks selon le mode
+  const stacks = dates.map(dateStr => {
+    const dayEvents = events.filter(e =>
+      e.date === dateStr &&
+      e.mode === "allow" &&
+      (e.finalized || e.minutesActual != null)
+    );
+
+    if (_chartMode === "app") {
+      const byApp = {};
+      for (const id of APP_IDS) byApp[id] = 0;
+      for (const e of dayEvents) {
+        const k = APP_IDS.includes(e.app) ? e.app : "unknown";
+        byApp[k] = (byApp[k] || 0) + (e.minutes || 0);
+      }
+      const total = Object.values(byApp).reduce((s, v) => s + v, 0);
+      return { dateStr, segments: byApp, segmentKeys: APP_IDS, total };
+    } else {
+      const byIntent = { reply: 0, fun: 0, auto: 0, null: 0 };
+      for (const e of dayEvents) {
+        const k = intentColors[e.intent] ? e.intent : "null";
+        byIntent[k] += e.minutes || 0;
+      }
+      const total = Object.values(byIntent).reduce((s, v) => s + v, 0);
+      return { dateStr, segments: byIntent, segmentKeys: ["reply", "fun", "auto", "null"], total };
+    }
+  });
+
+  const maxValue = Math.max(...stacks.map(s => s.total), redThresh + 10);
+  const colors = _chartMode === "app" ? appColors : intentColors;
 
   const W = canvas.width;
   const H = canvas.height;
-  const PT = 28, PB = 40, PL = 10, PR = 10;
+  const PT = 28, PB = 52, PL = 10, PR = 10;
   const chartH = H - PT - PB;
   const chartW = W - PL - PR;
 
   ctx.clearRect(0, 0, W, H);
 
   // Threshold lines
-  [[orangeThresh, "rgba(255,159,10,0.25)"], [redThresh, "rgba(255,69,58,0.25)"]].forEach(([thresh, color]) => {
+  [[orangeThresh, "rgba(255,159,10,0.3)"], [redThresh, "rgba(255,69,58,0.3)"]].forEach(([thresh, color]) => {
     const y = PT + chartH - (thresh / maxValue) * chartH;
     ctx.strokeStyle = color;
     ctx.lineWidth = 1;
@@ -348,44 +404,84 @@ function drawChart(appId = null) {
     ctx.setLineDash([]);
   });
 
-  const barW = Math.floor(chartW / values.length) - 6;
-  const gap = 6;
+  const barW = Math.floor(chartW / stacks.length) - 6;
+  const gap  = 6;
+  const dayLabels = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
-  values.forEach((value, i) => {
-    const barH = Math.max(2, (value / maxValue) * chartH);
-    const x = PL + i * (barW + gap) + (chartW - values.length * (barW + gap)) / 2;
-    const y = PT + chartH - barH;
-    const alpha = value === 0 ? 0.2 : 0.85;
+  stacks.forEach(({ dateStr, segments, segmentKeys, total }, i) => {
+    const x = PL + i * (barW + gap) + (chartW - stacks.length * (barW + gap)) / 2;
+    const isToday = dateStr === new Date().toDateString();
 
-    if (value >= redThresh) ctx.fillStyle = `rgba(255,69,58,${alpha})`;
-    else if (value >= orangeThresh) ctx.fillStyle = `rgba(255,159,10,${alpha})`;
-    else ctx.fillStyle = `rgba(52,199,89,${alpha})`;
+    if (total === 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      const emptyH = 4;
+      ctx.beginPath();
+      ctx.roundRect(x, PT + chartH - emptyH, barW, emptyH, Math.min(5, barW / 2));
+      ctx.fill();
+    } else {
+      let yOffset = PT + chartH;
+      const activeKeys = segmentKeys.filter(k => segments[k] > 0);
 
-    const r = Math.min(5, barW / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + barW - r, y);
-    ctx.arcTo(x + barW, y, x + barW, y + r, r);
-    ctx.lineTo(x + barW, y + barH);
-    ctx.lineTo(x, y + barH);
-    ctx.arcTo(x, y, x + r, y, r);
-    ctx.closePath();
-    ctx.fill();
+      segmentKeys.forEach(key => {
+        const mins = segments[key] || 0;
+        if (mins === 0) return;
+        const segH = Math.max(2, (mins / maxValue) * chartH);
+        yOffset -= segH;
+        ctx.fillStyle = colors[key] || "rgba(180,180,180,0.4)";
+        const isTop = key === activeKeys[activeKeys.length - 1];
+        const r = Math.min(5, barW / 2);
+        ctx.beginPath();
+        if (isTop) {
+          ctx.moveTo(x + r, yOffset);
+          ctx.lineTo(x + barW - r, yOffset);
+          ctx.arcTo(x + barW, yOffset, x + barW, yOffset + r, r);
+          ctx.lineTo(x + barW, yOffset + segH);
+          ctx.lineTo(x, yOffset + segH);
+          ctx.arcTo(x, yOffset, x + r, yOffset, r);
+        } else {
+          ctx.rect(x, yOffset, barW, segH);
+        }
+        ctx.closePath();
+        ctx.fill();
+      });
 
-    if (value > 0) {
+      // Total au-dessus
+      const topY = PT + chartH - (total / maxValue) * chartH;
       ctx.fillStyle = "rgba(255,255,255,0.85)";
       ctx.font = "bold 11px -apple-system, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(value + "m", x + barW / 2, y - 6);
+      ctx.fillText(total + "m", x + barW / 2, topY - 6);
     }
 
-    const dateObj = new Date(dates[i]);
-    const dayLabels = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-    const isToday = dateObj.toDateString() === new Date().toDateString();
+    // Label jour
+    const dateObj = new Date(dateStr);
     ctx.fillStyle = isToday ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.42)";
     ctx.font = (isToday ? "bold " : "") + "11px -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(dayLabels[dateObj.getDay()], x + barW / 2, H - 8);
+    ctx.fillText(dayLabels[dateObj.getDay()], x + barW / 2, H - PB + 16);
+  });
+
+  // Légende dynamique
+  const legendItems = _chartMode === "app"
+    ? APP_IDS.map(id => ({ key: id, label: APP_CONFIG[id].icon + " " + APP_CONFIG[id].label }))
+    : [
+        { key: "reply", label: "Répondre" },
+        { key: "fun",   label: "Fun" },
+        { key: "auto",  label: "Auto" }
+      ];
+
+  const legendY = H - 18;
+  const itemW = Math.floor(W / legendItems.length);
+  legendItems.forEach(({ key, label }, idx) => {
+    const lx = idx * itemW + 4;
+    ctx.fillStyle = colors[key] || "rgba(180,180,180,0.4)";
+    ctx.beginPath();
+    ctx.roundRect(lx, legendY - 7, 10, 10, 3);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "10px -apple-system, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(label, lx + 14, legendY + 1);
   });
 }
 
@@ -568,10 +664,11 @@ function renderAll() {
 window.UI = {
   showMenu, showIntent, showTimer, showCoach,
   renderAll, launchCoach, selectApp, setStatsApp,
-  renderTodaySessions
+  renderTodaySessions, toggleChartMode
 };
 window.selectApp = selectApp;
 window.setStatsApp = setStatsApp;
+window.toggleChartMode = toggleChartMode;
 
 /* ---------------------------------------------------------
    PATCH — renderTodaySessions (ajout accordéon sessions du jour)

@@ -738,3 +738,31 @@ button:active { transform: scale(0.975); }
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ---------------------------------------------------------
+   CHART TOGGLE
+   --------------------------------------------------------- */
+
+.chartToggleWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.chartToggleBtn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chartToggleBtn:active {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+}
