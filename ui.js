@@ -311,6 +311,51 @@ function selectApp(appId) {
    6) CHART — par app ou global
    --------------------------------------------------------- */
 
+/* ---------------------------------------------------------
+   CHART HELPERS (top-level pour éviter hoisting bugs)
+   --------------------------------------------------------- */
+
+function _buildDayStack(events, dateStr) {
+  const intentColorsMap = { reply: 1, fun: 1, auto: 1, null: 1 };
+  const dayEvents = events.filter(e =>
+    e.date === dateStr && e.mode === "allow" && (e.finalized || e.minutesActual != null)
+  );
+  if (_chartMode === "app") {
+    const byApp = {};
+    for (const id of APP_IDS) byApp[id] = 0;
+    for (const e of dayEvents) {
+      const k = APP_IDS.includes(e.app) ? e.app : "unknown";
+      byApp[k] = (byApp[k] || 0) + (e.minutes || 0);
+    }
+    return { dateStr, segments: byApp, segmentKeys: APP_IDS, total: Object.values(byApp).reduce((s,v)=>s+v,0) };
+  } else {
+    const byIntent = { reply: 0, fun: 0, auto: 0, null: 0 };
+    for (const e of dayEvents) {
+      const k = intentColorsMap[e.intent] ? e.intent : "null";
+      byIntent[k] += e.minutes || 0;
+    }
+    return { dateStr, segments: byIntent, segmentKeys: ["reply","fun","auto","null"], total: Object.values(byIntent).reduce((s,v)=>s+v,0) };
+  }
+}
+
+function _buildSingleDayStacks(events, dateStr) {
+  const dayEvents = events
+    .filter(e => e.date === dateStr && e.mode === "allow" && (e.finalized || e.minutesActual != null))
+    .sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0));
+
+  if (dayEvents.length === 0) {
+    return [{ dateStr, segments: {}, segmentKeys: [], total: 0, label: "—" }];
+  }
+
+  return dayEvents.map(e => {
+    const key = _chartMode === "app" ? (e.app || "unknown") : (e.intent || "null");
+    const label = e.startedAt
+      ? new Date(e.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      : "—";
+    return { dateStr, segments: { [key]: e.minutes || 0 }, segmentKeys: [key], total: e.minutes || 0, label };
+  });
+}
+
 // Mode du graphique : "app" ou "intent"
 let _chartMode = "app";
 // Jour sélectionné : null = 7 jours, sinon dateString
@@ -400,46 +445,8 @@ function drawChart(appId = null) {
 
   // Construit les stacks selon le mode
   const stacks = isSingleDay
-    ? buildSingleDayStacks(events, dates[0])
-    : dates.map(dateStr => buildDayStack(events, dateStr, appColors, intentColors));
-
-  function buildDayStack(events, dateStr, appColors, intentColors) {
-    const dayEvents = events.filter(e =>
-      e.date === dateStr && e.mode === "allow" && (e.finalized || e.minutesActual != null)
-    );
-    if (_chartMode === "app") {
-      const byApp = {};
-      for (const id of APP_IDS) byApp[id] = 0;
-      for (const e of dayEvents) {
-        const k = APP_IDS.includes(e.app) ? e.app : "unknown";
-        byApp[k] = (byApp[k] || 0) + (e.minutes || 0);
-      }
-      return { dateStr, segments: byApp, segmentKeys: APP_IDS, total: Object.values(byApp).reduce((s,v)=>s+v,0) };
-    } else {
-      const byIntent = { reply: 0, fun: 0, auto: 0, null: 0 };
-      for (const e of dayEvents) {
-        const k = intentColors[e.intent] ? e.intent : "null";
-        byIntent[k] += e.minutes || 0;
-      }
-      return { dateStr, segments: byIntent, segmentKeys: ["reply","fun","auto","null"], total: Object.values(byIntent).reduce((s,v)=>s+v,0) };
-    }
-  }
-
-  // Vue jour unique : une barre par session, triées par heure
-  function buildSingleDayStacks(events, dateStr) {
-    const dayEvents = events
-      .filter(e => e.date === dateStr && e.mode === "allow" && (e.finalized || e.minutesActual != null))
-      .sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0));
-
-    if (dayEvents.length === 0) return [{ dateStr, segments: {}, segmentKeys: [], total: 0, label: "Aucune" }];
-
-    return dayEvents.map(e => {
-      const key = _chartMode === "app" ? (e.app || "unknown") : (e.intent || "null");
-      const segments = { [key]: e.minutes || 0 };
-      const label = e.startedAt ? new Date(e.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
-      return { dateStr, segments, segmentKeys: [key], total: e.minutes || 0, label };
-    });
-  }
+    ? _buildSingleDayStacks(events, dates[0])
+    : dates.map(dateStr => _buildDayStack(events, dateStr));
 
   const maxValue = Math.max(...stacks.map(s => s.total), redThresh + 10);
   const colors = _chartMode === "app" ? appColors : intentColors;
