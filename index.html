@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
@@ -11,207 +10,196 @@
 <body>
   <main class="container">
 
-```
-<!-- Brand -->
-<header class="brand">
-  <h1>Intent</h1>
-  <div class="tagline">Screen discipline system</div>
-</header>
+    <!-- Brand -->
+    <header class="brand">
+      <h1>Intent</h1>
+      <div class="tagline">Screen discipline system</div>
+    </header>
 
-<!-- ===================================================
-     HERO — Temps global + état
-==================================================== -->
-<section class="card hero" aria-label="Dashboard">
-  <div class="heroTop">
-    <div id="stateDot" class="stateDot" aria-hidden="true"></div>
-    <div class="heroMain">
-      <div class="heroValue">
-        <span id="todayMinutes">0</span><span class="unit">min</span>
+    <!-- ===================================================
+         HERO — Temps global + état
+    ==================================================== -->
+    <section class="card hero" aria-label="Dashboard">
+      <div class="heroTop">
+        <div id="stateDot" class="stateDot" aria-hidden="true"></div>
+        <div class="heroMain">
+          <div class="heroValue">
+            <span id="todayMinutes">0</span><span class="unit">min</span>
+          </div>
+          <div class="heroLabel">
+            <span id="stateLabel">En contrôle</span>
+          </div>
+        </div>
       </div>
-      <div class="heroLabel">
-        <span id="stateLabel">En contrôle</span>
+
+      <!-- Breakdown par app -->
+      <div id="appBreakdown" class="appBreakdown"></div>
+
+      <div class="kpis" aria-label="Indicateurs">
+        <div class="kpi">
+          <div class="kpiTitle">Tendance</div>
+          <div id="kpiTrend" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiTitle">Pression</div>
+          <div id="kpiPressure" class="kpiValue">0/3</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiTitle">Auto (7j)</div>
+          <div id="kpiAuto" class="kpiValue">—</div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- Breakdown par app -->
-  <div id="appBreakdown" class="appBreakdown"></div>
+    <!-- ===================================================
+         CONTROLS — Sélecteur d'app + lancer session
+    ==================================================== -->
+    <section id="menu" class="card" aria-label="Contrôle">
+      <h2>Quelle app ?</h2>
 
-  <div class="kpis" aria-label="Indicateurs">
-    <div class="kpi">
-      <div class="kpiTitle">Tendance</div>
-      <div id="kpiTrend" class="kpiValue">—</div>
-    </div>
-    <div class="kpi">
-      <div class="kpiTitle">Pression</div>
-      <div id="kpiPressure" class="kpiValue">0/3</div>
-    </div>
-    <div class="kpi">
-      <div class="kpiTitle">Auto (7j)</div>
-      <div id="kpiAuto" class="kpiValue">—</div>
-    </div>
-  </div>
-</section>
+      <!-- Grille de sélection des apps -->
+      <div id="appSelector" class="appSelectorGrid" aria-label="Choisir une app">
+        <!-- Rempli par ui.js -->
+      </div>
 
-<!-- ===================================================
-     CONTROLS — Sélecteur d'app + lancer session
-==================================================== -->
-<section id="menu" class="card" aria-label="Contrôle">
-  <h2>Quelle app ?</h2>
+      <!-- Bouton de lancement (activé après sélection) -->
+      <button id="btnAllow" class="hidden" onclick="startSession(window._selectedApp)">
+        Sélectionne une app ci-dessus
+      </button>
 
-  <!-- Grille de sélection des apps -->
-  <div id="appSelector" class="appSelectorGrid" aria-label="Choisir une app">
-    <!-- Rempli par ui.js -->
-  </div>
+      <button onclick="launchCoach()" style="margin-top:10px;">
+        Coach personnel
+      </button>
+    </section>
 
-  <!-- Bouton de lancement (activé après sélection) -->
-  <button id="btnAllow" class="hidden" onclick="startSession(window._selectedApp)">
-    Sélectionne une app ci-dessus
-  </button>
+    <!-- ===================================================
+         INTENT
+    ==================================================== -->
+    <section id="intentBlock" class="card hidden" aria-label="Intention">
+      <h2>Pourquoi ouvrir cette app ?</h2>
 
-  <button onclick="launchCoach()" style="margin-top:10px;">
-    Coach personnel
-  </button>
-</section>
+      <button onclick="setIntentAndStart('reply')">
+        Répondre à quelqu'un
+      </button>
+      <button onclick="setIntentAndStart('fun')">
+        Divertissement conscient
+      </button>
+      <button onclick="setIntentAndStart('auto')">
+        Automatique / ennui
+      </button>
+      <button onclick="cancelIntent()" style="opacity:0.45; margin-top:16px; text-align:center;">
+        Annuler
+      </button>
+    </section>
 
-<!-- ===================================================
-     INTENT
-==================================================== -->
-<section id="intentBlock" class="card hidden" aria-label="Intention">
-  <h2>Pourquoi ouvrir cette app ?</h2>
+    <!-- ===================================================
+         TIMER
+    ==================================================== -->
+    <section id="timer" class="card hidden" aria-label="Minuteur">
+      <h2>Minuteur</h2>
+      <div id="timeDisplay">—:——</div>
+      <p id="timerHint">Le raccourci iOS gère la session et renvoie le temps passé.</p>
+    </section>
 
-  <button onclick="setIntentAndStart('reply')">
-    Répondre à quelqu'un
-  </button>
-  <button onclick="setIntentAndStart('fun')">
-    Divertissement conscient
-  </button>
-  <button onclick="setIntentAndStart('auto')">
-    Automatique / ennui
-  </button>
-  <button onclick="cancelIntent()" style="opacity:0.45; margin-top:16px; text-align:center;">
-    Annuler
-  </button>
-</section>
+    <!-- ===================================================
+         COACH
+    ==================================================== -->
+    <section id="coach" class="card hidden" aria-label="Coach personnel">
+      <h2>Analyse coach</h2>
 
-<!-- ===================================================
-     TIMER
-==================================================== -->
-<section id="timer" class="card hidden" aria-label="Minuteur">
-  <h2>Minuteur</h2>
-  <div id="timeDisplay">—:——</div>
-  <p id="timerHint">Le raccourci iOS gère la session et renvoie le temps passé.</p>
-</section>
+      <div class="coachMeta">
+        <span id="coachRiskBadge" class="coachBadge badge-low">—</span>
+        <span id="coachProfile" class="coachProfileLabel">—</span>
+      </div>
 
-<!-- ===================================================
-     COACH
-==================================================== -->
-<section id="coach" class="card hidden" aria-label="Coach personnel">
-  <h2>Analyse coach</h2>
+      <div class="coachRecoLabel">Recommandation</div>
+      <div id="coachRecommendation">Calcul en cours…</div>
 
-  <div class="coachMeta">
-    <span id="coachRiskBadge" class="coachBadge badge-low">—</span>
-    <span id="coachProfile" class="coachProfileLabel">—</span>
-  </div>
+      <div class="coachDivider"></div>
 
-  <div class="coachRecoLabel">Recommandation</div>
-  <div id="coachRecommendation">Calcul en cours…</div>
+      <div id="coachActions" aria-label="Choix">
+        <div class="coachActionsLabel">Je choisis</div>
+        <button data-choice="primary" onclick="logChoice('primary')">
+          Tâche unique, téléphone hors pièce
+        </button>
+        <button data-choice="alt1" onclick="logChoice('alt1')">
+          Marche sans téléphone (10 min)
+        </button>
+        <button data-choice="alt2" onclick="logChoice('alt2')">
+          Respiration 4/6 (5 min)
+        </button>
+      </div>
 
-  <div class="coachDivider"></div>
+      <div id="outcomeBlock" class="hidden">
+        <div class="coachActionsLabel" style="margin-top:16px;">Résultat</div>
+        <button onclick="logOutcome('done')">J'ai fait l'action</button>
+        <button onclick="logOutcome('partial')">Partiellement</button>
+        <button onclick="logOutcome('ignored')">Je n'ai pas fait</button>
+      </div>
 
-  <div id="coachActions" aria-label="Choix">
-    <div class="coachActionsLabel">Je choisis</div>
-    <button data-choice="primary" onclick="logChoice('primary')">
-      Tâche unique, téléphone hors pièce
-    </button>
-    <button data-choice="alt1" onclick="logChoice('alt1')">
-      Marche sans téléphone (10 min)
-    </button>
-    <button data-choice="alt2" onclick="logChoice('alt2')">
-      Respiration 4/6 (5 min)
-    </button>
-  </div>
+      <button onclick="location.reload()" style="opacity:0.4; margin-top:20px; text-align:center;">
+        Retour
+      </button>
+    </section>
 
-  <div id="outcomeBlock" class="hidden">
-    <div class="coachActionsLabel" style="margin-top:16px;">Résultat</div>
-    <button onclick="logOutcome('done')">J'ai fait l'action</button>
-    <button onclick="logOutcome('partial')">Partiellement</button>
-    <button onclick="logOutcome('ignored')">Je n'ai pas fait</button>
-  </div>
+    <!-- ===================================================
+         DIAGNOSTIC
+    ==================================================== -->
+    <section id="stats" class="card" aria-label="Diagnostic">
+      <h2>Diagnostic</h2>
 
-  <button onclick="location.reload()" style="opacity:0.4; margin-top:20px; text-align:center;">
-    Retour
-  </button>
-</section>
+      <!-- Onglets par app -->
+      <div id="statsTabBar" class="statsTabBar" aria-label="Filtrer par app">
+        <!-- Rempli par ui.js -->
+      </div>
 
-<!-- ===================================================
-     DIAGNOSTIC
-==================================================== -->
-<section id="stats" class="card" aria-label="Diagnostic">
-  <h2>Diagnostic</h2>
+      <!-- Risk score -->
+      <div class="riskHeader">
+        <span id="riskScore" class="riskScore risk-low">—</span>
+        <span class="riskScoreMax">/100</span>
+        <span id="riskLine" class="riskTier tier-low">—</span>
+      </div>
 
-  <!-- Onglets par app -->
-  <div id="statsTabBar" class="statsTabBar" aria-label="Filtrer par app">
-    <!-- Rempli par ui.js -->
-  </div>
+      <div class="riskbar" aria-label="Niveau de risque">
+        <div id="riskBarFill" class="riskbar__fill" style="width:0%"></div>
+      </div>
 
-  <!-- Risk score -->
-  <div class="riskHeader">
-    <span id="riskScore" class="riskScore risk-low">—</span>
-    <span class="riskScoreMax">/100</span>
-    <span id="riskLine" class="riskTier tier-low">—</span>
-  </div>
+      <div id="riskChips" class="chips" aria-label="Raisons principales"></div>
 
-  <div class="riskbar" aria-label="Niveau de risque">
-    <div id="riskBarFill" class="riskbar__fill" style="width:0%"></div>
-  </div>
+      <p id="profileTraits"></p>
 
-  <div id="riskChips" class="chips" aria-label="Raisons principales"></div>
+      <!-- Analyse 7 jours -->
+      <details class="accordion">
+        <summary>Analyse 7 jours</summary>
+        <div class="accordion__content">
+          <canvas id="chart" width="360" height="200"></canvas>
+          <p id="prediction"></p>
+          <p id="intentStats"></p>
+        </div>
+      </details>
 
-  <p id="profileTraits"></p>
-
-  <!-- Analyse 7 jours -->
-  <details class="accordion">
-    <summary>Analyse 7 jours</summary>
-    <div class="accordion__content">
-      <canvas id="chart" width="360" height="200"></canvas>
-      <p id="prediction"></p>
-      <p id="intentStats"></p>
-    </div>
-  </details>
-
-  <!-- Outils -->
-  <details class="accordion">
-    <summary>Outils</summary>
-    <div class="accordion__content">
-      <button onclick="exportData()">Exporter les données (JSON)</button>
-      <input id="importFile" type="file" accept="application/json" class="hidden" />
-      <button onclick="triggerImport()">Importer des données (JSON)</button>
-      <button onclick="resetLoop()">Réinitialiser boucle</button>
-    </div>
-  </details>
-</section>
-```
+      <!-- Outils -->
+      <details class="accordion">
+        <summary>Outils</summary>
+        <div class="accordion__content">
+          <button onclick="exportData()">Exporter les données (JSON)</button>
+          <input id="importFile" type="file" accept="application/json" class="hidden" />
+          <button onclick="triggerImport()">Importer des données (JSON)</button>
+          <button onclick="resetLoop()">Réinitialiser boucle</button>
+        </div>
+      </details>
+    </section>
 
   </main>
 
   <!-- Scripts — order matters -->
-
   <script src="storage.js"></script>
-
   <script src="engine.js"></script>
-
   <script src="analytics.js"></script>
-
   <script src="events.store.js"></script>
-
   <script src="sessions.js"></script>
-
   <script src="import-export.js"></script>
-
   <script src="ui.js"></script>
-
   <script src="main.js"></script>
-
 </body>
 </html>
