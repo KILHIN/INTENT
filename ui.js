@@ -8,6 +8,7 @@
 
 // App sélectionnée pour la prochaine session (null = vue globale)
 let _selectedApp = null;
+window._selectedApp = null; // exposé pour main.js
 
 /* ---------------------------------------------------------
    1) DOM HELPERS
@@ -207,6 +208,7 @@ function renderAppSelector() {
 
 function selectApp(appId) {
   _selectedApp = appId;
+  window._selectedApp = appId; // sync global pour main.js
   renderAppSelector();
 
   // Mettre à jour le bouton de lancement

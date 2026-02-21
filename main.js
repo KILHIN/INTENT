@@ -11,8 +11,12 @@ let pendingSessionApp = null; // remplace pendingSessionType
    --------------------------------------------------------- */
 
 function startSession(appId) {
+  if (!appId || !APP_CONFIG[appId]) {
+    alert("Sélectionne d'abord une app.");
+    return;
+  }
+
   const cfg = APP_CONFIG[appId];
-  if (!cfg) { console.warn("App inconnue:", appId); return; }
 
   pendingSessionApp = appId;
 
